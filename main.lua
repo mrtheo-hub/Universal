@@ -1,6 +1,6 @@
 --[[
     Flow Hub | Universal (Standalone)
-    No external libraries – pure native UI.
+    No external dependencies – pure native UI.
     Fully mobile/PC compatible, draggable floating button.
 ]]
 
