@@ -1,27 +1,19 @@
 --[[
     Flow Hub | Universal
-    Fully mobile-compatible universal script with Starlight UI.
-    Supports: FPS, RPG, Simulator, Survival, Horror, Roleplay, etc.
-    Features: Draggable floating toggle button (centered), Executor detection.
+    Using official Starlight & Nebula Icons loaders from docs.nebulasoftworks.xyz
+    Fully mobile-compatible with draggable centered toggle button.
 ]]
 
 -- ============================================================
--- LOAD STARLIGHT UI
+-- BOOT THE LIBRARIES (Official method)
 -- ============================================================
-local Starlight
-local success, err = pcall(function()
-    Starlight = loadstring(game:HttpGet("https://raw.githubusercontent.com/NebulaSoftworks/Starlight/main/loader.lua"))()
-end)
-if not success then
-    warn("Failed to load Starlight: " .. tostring(err))
-    return
-end
+local Starlight = loadstring(game:HttpGet("https://raw.nebulasoftworks.xyz/starlight"))()
+local NebulaIcons = loadstring(game:HttpGet("https://raw.nebulasoftworks.xyz/nebula-icon-library-loader"))()
 
 -- ============================================================
 -- EXECUTOR DETECTION
 -- ============================================================
 local function getExecutorName()
-    -- Common executor globals
     local executors = {
         {name = "Synapse X", check = function() return syn and syn.request ~= nil end},
         {name = "Krnl", check = function() return krnl and krnl.request ~= nil end},
@@ -41,30 +33,15 @@ local function getExecutorName()
         {name = "Arceus X", check = function() return arceus and arceus.request ~= nil end},
     }
     for _, exec in ipairs(executors) do
-        if exec.check() then
-            return exec.name
-        end
+        if exec.check() then return exec.name end
     end
-    -- Additional checks: getexecutorname or identifyexecutor
-    local success, name = pcall(function()
-        return getexecutorname()
-    end)
-    if success and name and name ~= "" then
-        return name
-    end
-    success, name = pcall(function()
-        return identifyexecutor()
-    end)
-    if success and name and name ~= "" then
-        return name
-    end
-    -- Check for gethui (common)
-    if gethui then
-        return "Unknown (has gethui)"
-    end
+    local success, name = pcall(getexecutorname)
+    if success and name and name ~= "" then return name end
+    success, name = pcall(identifyexecutor)
+    if success and name and name ~= "" then return name end
+    if gethui then return "Unknown (has gethui)" end
     return "Unknown"
 end
-
 local ExecutorName = getExecutorName()
 
 -- ============================================================
@@ -72,7 +49,7 @@ local ExecutorName = getExecutorName()
 -- ============================================================
 local Settings = {
     Enabled = true,
-    KeybindOpen = Enum.KeyCode.Insert, -- fallback for PC
+    KeybindOpen = Enum.KeyCode.Insert,
 
     -- Visuals
     Crosshair = { Enabled = true, Color = Color3.new(0, 1, 0), Size = 20, Style = "Cross" },
@@ -104,15 +81,10 @@ local Settings = {
 
     -- Theme
     Theme = "Dark",
-
-    -- Mobile
-    MobileControls = { Enabled = false }, -- will be auto-enabled on touch
 }
 
-local ConfigStore = { SavePath = "FlowHubConfig" }
-
 -- ============================================================
--- AUTO-GAME DETECTION (same as before)
+-- AUTO-GAME DETECTION
 -- ============================================================
 local GameInfo = {
     Type = "Unknown",
@@ -178,7 +150,7 @@ local UserInputService = game:GetService("UserInputService")
 local TouchEnabled = UserInputService.TouchEnabled
 
 -- ============================================================
--- FEATURE MODULES (same as before, but with mobile adaptations)
+-- FEATURE MODULES
 -- ============================================================
 
 -- FPS Booster
@@ -260,9 +232,9 @@ local Movement = {
 local FlyNoclip = {
     FlyEnabled = false,
     NoclipEnabled = false,
-    -- Mobile joystick state
     MoveDirection = Vector3.new(0,0,0),
     Vertical = 0,
+    PCMoveDirection = Vector3.new(0,0,0),
 
     ToggleFly = function(state)
         FlyNoclip.FlyEnabled = state
@@ -273,7 +245,6 @@ local FlyNoclip = {
             bp.Parent = char
             bp.Velocity = Vector3.new(0,0,0)
             bp.MaxForce = Vector3.new(4000,4000,4000)
-            -- Show mobile controls if touch
             if TouchEnabled then
                 FlyNoclip:ShowMobileFlyControls(true)
             end
@@ -303,7 +274,6 @@ local FlyNoclip = {
                 end
                 wait(0.1)
             end
-            -- Reset collisions when disabled
             local char = getCharacter()
             if char then
                 for _, part in ipairs(char:GetDescendants()) do
@@ -315,7 +285,6 @@ local FlyNoclip = {
         end)
     end,
 
-    -- Mobile UI elements for fly controls
     FlyControlsFrame = nil,
     ShowMobileFlyControls = function(show)
         if show then
@@ -332,7 +301,6 @@ local FlyNoclip = {
             frame.Parent = screenGui
             FlyNoclip.FlyControlsFrame = frame
 
-            -- Create buttons: Up, Down, Left, Right, Ascend, Descend, Toggle Fly, Toggle Noclip
             local buttonSize = UDim2.new(0, 60, 0, 60)
             local function makeButton(text, pos, color)
                 local btn = Instance.new("TextButton")
@@ -346,23 +314,15 @@ local FlyNoclip = {
                 return btn
             end
 
-            -- Layout: grid 3x3 (like a D-pad)
-            local offset = 70
-            local center = UDim2.new(0.5, -30, 0.5, -30)
-
-            -- Buttons: Up (0, -1), Down (0,1), Left (-1,0), Right (1,0)
             local upBtn = makeButton("↑", UDim2.new(0.5, -30, 0, 10), Color3.new(0.3,0.3,0.8))
             local downBtn = makeButton("↓", UDim2.new(0.5, -30, 0, 130), Color3.new(0.3,0.3,0.8))
             local leftBtn = makeButton("←", UDim2.new(0, 10, 0.5, -30), Color3.new(0.3,0.3,0.8))
             local rightBtn = makeButton("→", UDim2.new(0, 130, 0.5, -30), Color3.new(0.3,0.3,0.8))
             local ascendBtn = makeButton("▲", UDim2.new(0.8, 0, 0.5, -30), Color3.new(0.8,0.3,0.3))
             local descendBtn = makeButton("▼", UDim2.new(0.8, 0, 0.5, 30), Color3.new(0.8,0.3,0.3))
-
-            -- Toggle buttons
             local toggleFlyBtn = makeButton("Fly", UDim2.new(0, 200, 0, 10), Color3.new(0,0.6,0))
             local toggleNoclipBtn = makeButton("Noclip", UDim2.new(0, 200, 0, 80), Color3.new(0.6,0.6,0))
 
-            -- Bind touch events
             local function setDirection(btn, dir)
                 btn.MouseButton1Down:Connect(function()
                     FlyNoclip.MoveDirection = FlyNoclip.MoveDirection + dir
@@ -370,7 +330,6 @@ local FlyNoclip = {
                 btn.MouseButton1Up:Connect(function()
                     FlyNoclip.MoveDirection = FlyNoclip.MoveDirection - dir
                 end)
-                -- Also for touch end
                 btn.TouchEnded:Connect(function()
                     FlyNoclip.MoveDirection = FlyNoclip.MoveDirection - dir
                 end)
@@ -381,25 +340,13 @@ local FlyNoclip = {
             setDirection(leftBtn, Vector3.new(-1,0,0))
             setDirection(rightBtn, Vector3.new(1,0,0))
 
-            ascendBtn.MouseButton1Down:Connect(function()
-                FlyNoclip.Vertical = 1
-            end)
-            ascendBtn.MouseButton1Up:Connect(function()
-                FlyNoclip.Vertical = 0
-            end)
-            ascendBtn.TouchEnded:Connect(function()
-                FlyNoclip.Vertical = 0
-            end)
+            ascendBtn.MouseButton1Down:Connect(function() FlyNoclip.Vertical = 1 end)
+            ascendBtn.MouseButton1Up:Connect(function() FlyNoclip.Vertical = 0 end)
+            ascendBtn.TouchEnded:Connect(function() FlyNoclip.Vertical = 0 end)
 
-            descendBtn.MouseButton1Down:Connect(function()
-                FlyNoclip.Vertical = -1
-            end)
-            descendBtn.MouseButton1Up:Connect(function()
-                FlyNoclip.Vertical = 0
-            end)
-            descendBtn.TouchEnded:Connect(function()
-                FlyNoclip.Vertical = 0
-            end)
+            descendBtn.MouseButton1Down:Connect(function() FlyNoclip.Vertical = -1 end)
+            descendBtn.MouseButton1Up:Connect(function() FlyNoclip.Vertical = 0 end)
+            descendBtn.TouchEnded:Connect(function() FlyNoclip.Vertical = 0 end)
 
             toggleFlyBtn.MouseButton1Click:Connect(function()
                 Settings.Fly.Enabled = not Settings.Fly.Enabled
@@ -410,9 +357,7 @@ local FlyNoclip = {
                 Settings.Noclip.Enabled = not Settings.Noclip.Enabled
                 FlyNoclip.ToggleNoclip(Settings.Noclip.Enabled)
             end)
-
         else
-            -- Remove controls
             if FlyNoclip.FlyControlsFrame then
                 local gui = FlyNoclip.FlyControlsFrame.Parent
                 if gui then gui:Destroy() end
@@ -422,7 +367,7 @@ local FlyNoclip = {
     end
 }
 
--- Fly update loop (for both PC and mobile)
+-- Fly update loop
 spawn(function()
     while wait() do
         if Settings.Fly.Enabled then
@@ -432,14 +377,10 @@ spawn(function()
                 if bp then
                     local moveDir = Vector3.new(0,0,0)
                     if TouchEnabled then
-                        -- Use mobile inputs
                         moveDir = FlyNoclip.MoveDirection
                         local vert = FlyNoclip.Vertical
                         moveDir = moveDir + Vector3.new(0, vert, 0)
                     else
-                        -- PC: use UserInputService (we'll handle via keybind events)
-                        -- But we can use the same logic: we already have keydown events setting a global direction
-                        -- We'll use a separate variable for PC direction
                         moveDir = FlyNoclip.PCMoveDirection or Vector3.new(0,0,0)
                     end
                     if moveDir ~= Vector3.new(0,0,0) then
@@ -461,7 +402,6 @@ spawn(function()
 end)
 
 -- PC key handling for fly
-FlyNoclip.PCMoveDirection = Vector3.new(0,0,0)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed or TouchEnabled then return end
     if Settings.Fly.Enabled then
@@ -476,7 +416,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             FlyNoclip.PCMoveDirection = FlyNoclip.PCMoveDirection + dir
         end
     end
-    -- Toggle fly key F (PC)
     if input.KeyCode == Enum.KeyCode.F then
         Settings.Fly.Enabled = not Settings.Fly.Enabled
         FlyNoclip.ToggleFly(Settings.Fly.Enabled)
@@ -514,7 +453,7 @@ local InfiniteZoom = {
     end
 }
 
--- Freecam (with mobile support)
+-- Freecam
 local Freecam = {
     Running = false,
     Toggle = function(state)
@@ -529,9 +468,7 @@ local Freecam = {
             freecamPart.Size = Vector3.new(1,1,1)
             freecamPart.Parent = workspace
             cam.CameraSubject = freecamPart
-            -- Mobile controls for freecam? We'll reuse fly controls? Let's make it simple: use same joystick.
             if TouchEnabled then
-                -- Show a control panel similar to fly
                 Freecam:ShowMobileFreecamControls(true)
             end
         else
@@ -563,7 +500,6 @@ local Freecam = {
             frame.Parent = screenGui
             Freecam.FreecamControlsFrame = frame
 
-            -- Simple joystick area: left half for movement, right half for rotation? We'll just use buttons.
             local function makeButton(text, pos, color)
                 local btn = Instance.new("TextButton")
                 btn.Size = UDim2.new(0, 60, 0, 60)
@@ -575,12 +511,12 @@ local Freecam = {
                 btn.Parent = frame
                 return btn
             end
-            -- WASD style
+
             local up = makeButton("↑", UDim2.new(0.5, -30, 0, 10), Color3.new(0.3,0.3,0.8))
             local down = makeButton("↓", UDim2.new(0.5, -30, 0, 130), Color3.new(0.3,0.3,0.8))
             local left = makeButton("←", UDim2.new(0, 10, 0.5, -30), Color3.new(0.3,0.3,0.8))
             local right = makeButton("→", UDim2.new(0, 130, 0.5, -30), Color3.new(0.3,0.3,0.8))
-            -- For freecam, we need to move the part. We'll update in loop.
+
             local moveVec = Vector3.new(0,0,0)
             local function setDir(btn, dir)
                 btn.MouseButton1Down:Connect(function() moveVec = moveVec + dir end)
@@ -592,7 +528,6 @@ local Freecam = {
             setDir(left, Vector3.new(-1,0,0))
             setDir(right, Vector3.new(1,0,0))
 
-            -- Update freecam part position
             spawn(function()
                 while Freecam.Running do
                     local part = workspace:FindFirstChild("FreecamPart")
@@ -609,7 +544,6 @@ local Freecam = {
                 end
             end)
 
-            -- Toggle freecam button
             local toggleBtn = makeButton("Exit Freecam", UDim2.new(0, 200, 0, 10), Color3.new(0.8,0,0))
             toggleBtn.Size = UDim2.new(0, 120, 0, 40)
             toggleBtn.MouseButton1Click:Connect(function()
@@ -626,7 +560,7 @@ local Freecam = {
     end
 }
 
--- ESP (simplified, same as before)
+-- ESP
 local ESP = {
     Running = false,
     Objects = {},
@@ -672,7 +606,7 @@ local ESP = {
     end
 }
 
--- Aimbot (with mobile auto-aim)
+-- Aimbot
 local Aimbot = {
     Running = false,
     Target = nil,
@@ -682,7 +616,6 @@ local Aimbot = {
             spawn(function()
                 while Aimbot.Running do
                     if not TouchEnabled or Settings.Aimbot.MobileAutoAim then
-                        -- Only run if PC or mobile auto-aim is on
                         local localPlayer = getPlayer()
                         local char = localPlayer.Character
                         if char then
@@ -719,13 +652,9 @@ local Aimbot = {
                                         local newPos = currentPos:Lerp(targetPos2, 1 / Settings.Aimbot.Smoothness)
                                         mouse.Move(newPos)
                                     elseif TouchEnabled then
-                                        -- Mobile: we can't move mouse, but we can set camera CFrame? 
-                                        -- We'll implement simple auto-aim by setting camera CFrame to look at target.
                                         local cam = workspace.CurrentCamera
                                         local lookAt = targetPos
-                                        local currentCF = cam.CFrame
-                                        local newCF = CFrame.new(currentCF.Position, lookAt)
-                                        cam.CFrame = newCF
+                                        cam.CFrame = CFrame.new(cam.CFrame.Position, lookAt)
                                     end
                                 end
                             end
@@ -770,15 +699,7 @@ local AutoRespawn = {
 -- ============================================================
 -- DRAGGABLE FLOATING TOGGLE BUTTON (Centered)
 -- ============================================================
-local FloatingButton = {
-    Gui = nil,
-    Dragging = false,
-    DragStart = nil,
-    StartPos = nil,
-}
-
 local function createFloatingToggle()
-    -- Clean up any existing
     local old = game:GetService("CoreGui"):FindFirstChild("FlowHubToggle")
     if old then old:Destroy() end
 
@@ -788,79 +709,63 @@ local function createFloatingToggle()
     screenGui.IgnoreGuiInset = true
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Main frame (the draggable container)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 60, 0, 60)
-    frame.Position = UDim2.new(0.5, -30, 0.5, -30) -- centered initially
+    frame.Position = UDim2.new(0.5, -30, 0.5, -30) -- Centered
     frame.BackgroundTransparency = 1
     frame.Parent = screenGui
-    FloatingButton.Gui = frame
 
-    -- The button (image or text)
     local button = Instance.new("ImageButton")
     button.Size = UDim2.new(1, 0, 1, 0)
-    button.Position = UDim2.new(0, 0, 0, 0)
     button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     button.BorderSizePixel = 0
-    button.Image = "rbxassetid://6023426922" -- menu icon
+    button.Image = "rbxassetid://6023426922" -- Menu icon
     button.Parent = frame
     button.ClipsDescendants = true
 
-    -- Make draggable
     local dragging = false
     local dragStart, startPos
 
-    local function onInputBegan(input)
+    button.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
         end
-    end
+    end)
 
-    local function onInputChanged(input)
+    button.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStart
-            local scaleX = frame.Position.X.Scale
-            local offsetX = frame.Position.X.Offset + delta.X
-            local scaleY = frame.Position.Y.Scale
-            local offsetY = frame.Position.Y.Offset + delta.Y
-            -- Clamp to screen bounds (optional, but keep within)
-            frame.Position = UDim2.new(scaleX, offsetX, scaleY, offsetY)
+            frame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
             dragStart = input.Position
         end
-    end
+    end)
 
-    local function onInputEnded(input)
+    button.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
-    end
+    end)
 
-    -- Connect to button (to capture input)
-    button.InputBegan:Connect(onInputBegan)
-    button.InputChanged:Connect(onInputChanged)
-    button.InputEnded:Connect(onInputEnded)
-
-    -- Toggle UI on click
     button.MouseButton1Click:Connect(function()
-        if window.Visible then
-            window:Hide()
-        else
-            window:Show()
+        if window then
+            if window.Visible then
+                window:Hide()
+            else
+                window:Show()
+            end
         end
     end)
 end
 
-if TouchEnabled then
-    createFloatingToggle()
-else
-    -- Also create for PC, but still centered (though PC users may prefer keybind)
-    createFloatingToggle()
-end
-
 -- ============================================================
--- UI CREATION WITH STARLIGHT
+-- CREATE STARLIGHT UI
 -- ============================================================
 local window = Starlight:CreateWindow({
     Title = "Flow Hub | Universal",
@@ -868,15 +773,15 @@ local window = Starlight:CreateWindow({
     Keybind = Settings.KeybindOpen,
 })
 
--- Tabs
-local generalTab = window:CreateTab("General")
-local visualTab = window:CreateTab("Visuals")
-local movementTab = window:CreateTab("Movement")
-local miscTab = window:CreateTab("Misc")
-local aimbotTab = window:CreateTab("Aimbot")
-local settingsTab = window:CreateTab("Settings")
+-- Create floating toggle button (centered + draggable)
+createFloatingToggle()
+
+-- ============================================================
+-- UI TABS & SECTIONS
+-- ============================================================
 
 -- General Tab
+local generalTab = window:CreateTab("General")
 local infoSection = generalTab:CreateSection("Game Info")
 infoSection:CreateLabel("Detected Game: " .. GameInfo.Type)
 infoSection:CreateLabel("Executor: " .. ExecutorName)
@@ -888,6 +793,8 @@ toggleSection:CreateToggle("Enable Script", Settings.Enabled, function(value)
 end)
 
 -- Visuals Tab
+local visualTab = window:CreateTab("Visuals")
+
 local crosshairSection = visualTab:CreateSection("Crosshair")
 crosshairSection:CreateToggle("Enabled", Settings.Crosshair.Enabled, function(value)
     Settings.Crosshair.Enabled = value
@@ -942,6 +849,8 @@ espSection:CreateSlider("Distance", 50, 1000, Settings.ESP.Distance, function(va
 end)
 
 -- Movement Tab
+local movementTab = window:CreateTab("Movement")
+
 movementTab:CreateToggle("WalkSpeed", Settings.WalkSpeed.Enabled, function(value)
     Settings.WalkSpeed.Enabled = value
     Movement.Update()
@@ -974,6 +883,8 @@ movementTab:CreateToggle("Noclip", Settings.Noclip.Enabled, function(value)
 end)
 
 -- Misc Tab
+local miscTab = window:CreateTab("Misc")
+
 miscTab:CreateToggle("Anti AFK", Settings.AntiAFK.Enabled, function(value)
     Settings.AntiAFK.Enabled = value
     AntiAFK.Toggle(value)
@@ -1004,6 +915,7 @@ miscTab:CreateButton("Rejoin", Rejoin)
 
 -- Aimbot Tab
 if GameInfo.Supports.Aimbot then
+    local aimbotTab = window:CreateTab("Aimbot")
     aimbotTab:CreateToggle("Enable Aimbot", Settings.Aimbot.Enabled, function(value)
         Settings.Aimbot.Enabled = value
         Aimbot.Toggle(value)
@@ -1023,10 +935,13 @@ if GameInfo.Supports.Aimbot then
         end)
     end
 else
+    local aimbotTab = window:CreateTab("Aimbot")
     aimbotTab:CreateLabel("Aimbot not supported in this game")
 end
 
 -- Settings Tab
+local settingsTab = window:CreateTab("Settings")
+
 settingsTab:CreateKeybind("Open GUI Key (PC)", Settings.KeybindOpen, function(key)
     Settings.KeybindOpen = key
     window:SetKeybind(key)
@@ -1046,9 +961,8 @@ settingsTab:CreateButton("Load Config", function()
 end)
 
 -- ============================================================
--- INITIALIZATION
+-- APPLY INITIAL SETTINGS
 -- ============================================================
--- Apply initial settings
 if Settings.Fullbright.Enabled then Fullbright.Toggle(true) end
 if Settings.NoFog.Enabled then NoFog.Toggle(true) end
 if Settings.AntiAFK.Enabled then AntiAFK.Toggle(true) end
@@ -1060,7 +974,11 @@ if Settings.ESP.Enabled then ESP.Toggle(true) end
 if Settings.WalkSpeed.Enabled or Settings.JumpPower.Enabled then Movement.Update() end
 if Settings.Aimbot.Enabled and GameInfo.Supports.Aimbot then Aimbot.Toggle(true) end
 
-print("Flow Hub | Universal loaded. Detected game: " .. GameInfo.Type)
+-- ============================================================
+-- STARTUP MESSAGES
+-- ============================================================
+print("Flow Hub | Universal loaded.")
+print("Detected game: " .. GameInfo.Type)
 print("Executor: " .. ExecutorName)
 if TouchEnabled then
     print("Mobile mode active. Drag the floating button to move it.")
