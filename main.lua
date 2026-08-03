@@ -1,14 +1,8 @@
 --[[
-    Flow Hub | Universal
-    Using official Starlight & Nebula Icons loaders from docs.nebulasoftworks.xyz
-    Fully mobile-compatible with draggable centered toggle button.
+    Flow Hub | Universal (Standalone)
+    No external libraries – pure native UI.
+    Fully mobile/PC compatible, draggable floating button.
 ]]
-
--- ============================================================
--- BOOT THE LIBRARIES (Official method)
--- ============================================================
-local Starlight = loadstring(game:HttpGet("https://raw.nebulasoftworks.xyz/starlight"))()
-local NebulaIcons = loadstring(game:HttpGet("https://raw.nebulasoftworks.xyz/nebula-icon-library-loader"))()
 
 -- ============================================================
 -- EXECUTOR DETECTION
@@ -76,7 +70,7 @@ local Settings = {
     Spectate = { Enabled = false, Target = nil },
     Teleport = { Enabled = false, Target = nil },
 
-    -- Aimbot (default key is R, not RightButton)
+    -- Aimbot (default key R)
     Aimbot = { Enabled = false, FOV = 90, Smoothness = 5, Keybind = Enum.KeyCode.R, MobileAutoAim = false },
 
     -- Theme
@@ -100,7 +94,6 @@ local GameInfo = {
         Aimbot = false,
     }
 }
-
 local function detectGame()
     local gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name or ""
     local lower = string.lower(gameName)
@@ -150,9 +143,8 @@ local UserInputService = game:GetService("UserInputService")
 local TouchEnabled = UserInputService.TouchEnabled
 
 -- ============================================================
--- FEATURE MODULES (full implementation)
+-- FEATURE MODULES (identical to before – kept intact)
 -- ============================================================
-
 -- FPS Booster
 local FPSBooster = {
     Toggle = function(state)
@@ -697,6 +689,411 @@ local AutoRespawn = {
 }
 
 -- ============================================================
+-- BUILT-IN UI (Native Roblox)
+-- ============================================================
+local UI = {
+    ScreenGui = nil,
+    MainFrame = nil,
+    Tabs = {},
+    CurrentTab = nil,
+    Visible = true,
+}
+
+local function createUI()
+    -- Clean any old UI
+    local oldGui = game:GetService("CoreGui"):FindFirstChild("FlowHubUI")
+    if oldGui then oldGui:Destroy() end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "FlowHubUI"
+    screenGui.Parent = game:GetService("CoreGui")
+    screenGui.IgnoreGuiInset = true
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    UI.ScreenGui = screenGui
+
+    -- Main frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 500, 0, 550)
+    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -275)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.ClipsDescendants = true
+    mainFrame.Parent = screenGui
+    UI.MainFrame = mainFrame
+
+    -- Title bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, 40)
+    titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -50, 1, 0)
+    titleLabel.Position = UDim2.new(0, 10, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = "Flow Hub | Universal"
+    titleLabel.TextColor3 = Color3.new(1,1,1)
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.TextScaled = true
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.Parent = titleBar
+
+    -- Close button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -35, 0.5, -15)
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.new(1,1,1)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Parent = titleBar
+    closeBtn.MouseButton1Click:Connect(function()
+        UI.Visible = false
+        UI.ScreenGui.Enabled = false
+    end)
+
+    -- Tab bar
+    local tabBar = Instance.new("Frame")
+    tabBar.Size = UDim2.new(1, 0, 0, 35)
+    tabBar.Position = UDim2.new(0, 0, 0, 40)
+    tabBar.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    tabBar.BorderSizePixel = 0
+    tabBar.Parent = mainFrame
+
+    -- Content frame
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1, -10, 1, -85)
+    contentFrame.Position = UDim2.new(0, 5, 0, 80)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = mainFrame
+
+    -- Helper to create tabs
+    local function addTab(name)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 100, 1, 0)
+        btn.Position = UDim2.new(0, #UI.Tabs * 105 + 5, 0, 0)
+        btn.Text = name
+        btn.TextColor3 = Color3.new(0.8,0.8,0.8)
+        btn.BackgroundColor3 = Color3.fromRGB(45,45,50)
+        btn.BorderSizePixel = 0
+        btn.Parent = tabBar
+
+        local tabContent = Instance.new("ScrollingFrame")
+        tabContent.Size = UDim2.new(1, 0, 1, 0)
+        tabContent.BackgroundTransparency = 1
+        tabContent.Parent = contentFrame
+        tabContent.Visible = false
+        tabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+        tabContent.ScrollBarThickness = 6
+        tabContent.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
+
+        local tabData = { Button = btn, Content = tabContent, Name = name }
+        table.insert(UI.Tabs, tabData)
+
+        btn.MouseButton1Click:Connect(function()
+            for _, t in ipairs(UI.Tabs) do
+                t.Content.Visible = false
+                t.Button.BackgroundColor3 = Color3.fromRGB(45,45,50)
+                t.Button.TextColor3 = Color3.new(0.8,0.8,0.8)
+            end
+            tabContent.Visible = true
+            btn.BackgroundColor3 = Color3.fromRGB(70,70,80)
+            btn.TextColor3 = Color3.new(1,1,1)
+            UI.CurrentTab = name
+        end)
+
+        return tabContent
+    end
+
+    -- Helper: Add a toggle
+    local function addToggle(parent, label, defaultVal, callback)
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, -10, 0, 35)
+        frame.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 40)
+        frame.BackgroundTransparency = 1
+        frame.Parent = parent
+
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(0.7, 0, 1, 0)
+        lbl.Text = label
+        lbl.TextColor3 = Color3.new(1,1,1)
+        lbl.BackgroundTransparency = 1
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.TextScaled = true
+        lbl.Font = Enum.Font.Gotham
+        lbl.Parent = frame
+
+        local toggleBtn = Instance.new("TextButton")
+        toggleBtn.Size = UDim2.new(0, 50, 0, 28)
+        toggleBtn.Position = UDim2.new(0.85, 0, 0.5, -14)
+        toggleBtn.Text = defaultVal and "ON" or "OFF"
+        toggleBtn.TextColor3 = Color3.new(1,1,1)
+        toggleBtn.BackgroundColor3 = defaultVal and Color3.fromRGB(0,150,0) or Color3.fromRGB(150,0,0)
+        toggleBtn.BorderSizePixel = 0
+        toggleBtn.Parent = frame
+
+        toggleBtn.MouseButton1Click:Connect(function()
+            defaultVal = not defaultVal
+            toggleBtn.Text = defaultVal and "ON" or "OFF"
+            toggleBtn.BackgroundColor3 = defaultVal and Color3.fromRGB(0,150,0) or Color3.fromRGB(150,0,0)
+            callback(defaultVal)
+        end)
+    end
+
+    -- Helper: Add a slider
+    local function addSlider(parent, label, min, max, default, callback)
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, -10, 0, 50)
+        frame.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 55)
+        frame.BackgroundTransparency = 1
+        frame.Parent = parent
+
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(0.6, 0, 0.5, 0)
+        lbl.Text = label .. ": " .. tostring(default)
+        lbl.TextColor3 = Color3.new(1,1,1)
+        lbl.BackgroundTransparency = 1
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.TextScaled = true
+        lbl.Font = Enum.Font.Gotham
+        lbl.Parent = frame
+
+        local slider = Instance.new("Frame")
+        slider.Size = UDim2.new(0.8, 0, 0.3, 0)
+        slider.Position = UDim2.new(0.05, 0, 0.6, 0)
+        slider.BackgroundColor3 = Color3.fromRGB(60,60,70)
+        slider.BorderSizePixel = 0
+        slider.Parent = frame
+
+        local fill = Instance.new("Frame")
+        fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(0,150,200)
+        fill.BorderSizePixel = 0
+        fill.Parent = slider
+
+        local dragBtn = Instance.new("TextButton")
+        dragBtn.Size = UDim2.new(0, 16, 0, 16)
+        dragBtn.Position = UDim2.new((default - min) / (max - min), -8, 0.5, -8)
+        dragBtn.BackgroundColor3 = Color3.fromRGB(200,200,200)
+        dragBtn.BorderSizePixel = 0
+        dragBtn.Text = ""
+        dragBtn.Parent = slider
+
+        local dragging = false
+        dragBtn.MouseButton1Down:Connect(function()
+            dragging = true
+        end)
+        dragBtn.MouseButton1Up:Connect(function()
+            dragging = false
+        end)
+        dragBtn.InputEnded:Connect(function()
+            dragging = false
+        end)
+
+        -- Update slider on mouse movement
+        local function updateSlider(input)
+            if not dragging then return end
+            local pos = input.Position.X
+            local sliderAbsPos = slider.AbsolutePosition.X
+            local sliderWidth = slider.AbsoluteSize.X
+            if sliderWidth <= 0 then return end
+            local frac = math.clamp((pos - sliderAbsPos) / sliderWidth, 0, 1)
+            local value = min + frac * (max - min)
+            value = math.floor(value + 0.5)
+            if value < min then value = min end
+            if value > max then value = max end
+            fill.Size = UDim2.new(frac, 0, 1, 0)
+            dragBtn.Position = UDim2.new(frac, -8, 0.5, -8)
+            lbl.Text = label .. ": " .. tostring(value)
+            callback(value)
+        end
+
+        dragBtn.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                updateSlider(input)
+            end
+        end)
+
+        -- Also allow click on slider bar
+        slider.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                updateSlider(input)
+            end
+        end)
+        slider.InputEnded:Connect(function()
+            dragging = false
+        end)
+    end
+
+    -- Helper: Add a button
+    local function addButton(parent, label, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.8, 0, 0, 35)
+        btn.Position = UDim2.new(0.1, 0, 0, #parent:GetChildren() * 45)
+        btn.Text = label
+        btn.TextColor3 = Color3.new(1,1,1)
+        btn.BackgroundColor3 = Color3.fromRGB(60,60,80)
+        btn.BorderSizePixel = 0
+        btn.Parent = parent
+        btn.MouseButton1Click:Connect(callback)
+    end
+
+    -- Helper: Add a label
+    local function addLabel(parent, text)
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1, -10, 0, 25)
+        lbl.Position = UDim2.new(0, 5, 0, #parent:GetChildren() * 30)
+        lbl.Text = text
+        lbl.TextColor3 = Color3.new(0.8,0.8,0.8)
+        lbl.BackgroundTransparency = 1
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.TextScaled = true
+        lbl.Font = Enum.Font.Gotham
+        lbl.Parent = parent
+    end
+
+    -- ============================================================
+    -- BUILD TABS AND CONTROLS
+    -- ============================================================
+
+    -- General tab
+    local genTab = addTab("General")
+    addLabel(genTab, "Game: " .. GameInfo.Type)
+    addLabel(genTab, "Executor: " .. ExecutorName)
+    addToggle(genTab, "Enable Script", Settings.Enabled, function(v) Settings.Enabled = v end)
+
+    -- Visuals tab
+    local visTab = addTab("Visuals")
+    addToggle(visTab, "Crosshair", Settings.Crosshair.Enabled, function(v) Settings.Crosshair.Enabled = v end)
+    -- Color picker for crosshair (simplified: just a button to choose from preset colors)
+    local colorFrame = Instance.new("Frame")
+    colorFrame.Size = UDim2.new(0.8, 0, 0, 30)
+    colorFrame.Position = UDim2.new(0.1, 0, 0, #visTab:GetChildren() * 45)
+    colorFrame.BackgroundTransparency = 1
+    colorFrame.Parent = visTab
+    local colorLabel = Instance.new("TextLabel")
+    colorLabel.Size = UDim2.new(0.5, 0, 1, 0)
+    colorLabel.Text = "Crosshair Color:"
+    colorLabel.TextColor3 = Color3.new(1,1,1)
+    colorLabel.BackgroundTransparency = 1
+    colorLabel.TextXAlignment = Enum.TextXAlignment.Left
+    colorLabel.Parent = colorFrame
+    local colorBtn = Instance.new("TextButton")
+    colorBtn.Size = UDim2.new(0.3, 0, 0.8, 0)
+    colorBtn.Position = UDim2.new(0.6, 0, 0.1, 0)
+    colorBtn.BackgroundColor3 = Settings.Crosshair.Color
+    colorBtn.BorderSizePixel = 0
+    colorBtn.Text = ""
+    colorBtn.Parent = colorFrame
+    local colorIdx = 1
+    local presetColors = {
+        Color3.new(0,1,0), Color3.new(1,0,0), Color3.new(0,0,1),
+        Color3.new(1,1,0), Color3.new(1,0,1), Color3.new(0,1,1),
+        Color3.new(1,1,1), Color3.new(0.5,0.5,0.5)
+    }
+    colorBtn.MouseButton1Click:Connect(function()
+        colorIdx = colorIdx % #presetColors + 1
+        local newColor = presetColors[colorIdx]
+        Settings.Crosshair.Color = newColor
+        colorBtn.BackgroundColor3 = newColor
+    end)
+
+    addSlider(visTab, "Crosshair Size", 10, 50, Settings.Crosshair.Size, function(v) Settings.Crosshair.Size = v end)
+    -- Dropdown for style (simplified: cycle with button)
+    local styleFrame = Instance.new("Frame")
+    styleFrame.Size = UDim2.new(0.8, 0, 0, 30)
+    styleFrame.Position = UDim2.new(0.1, 0, 0, #visTab:GetChildren() * 45)
+    styleFrame.BackgroundTransparency = 1
+    styleFrame.Parent = visTab
+    local styleLabel = Instance.new("TextLabel")
+    styleLabel.Size = UDim2.new(0.5, 0, 1, 0)
+    styleLabel.Text = "Style: " .. Settings.Crosshair.Style
+    styleLabel.TextColor3 = Color3.new(1,1,1)
+    styleLabel.BackgroundTransparency = 1
+    styleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    styleLabel.Parent = styleFrame
+    local styleBtn = Instance.new("TextButton")
+    styleBtn.Size = UDim2.new(0.3, 0, 0.8, 0)
+    styleBtn.Position = UDim2.new(0.6, 0, 0.1, 0)
+    styleBtn.Text = "Change"
+    styleBtn.BackgroundColor3 = Color3.fromRGB(60,60,80)
+    styleBtn.BorderSizePixel = 0
+    styleBtn.Parent = styleFrame
+    local styleIdx = 1
+    local styles = {"Cross", "Dot", "Circle"}
+    styleBtn.MouseButton1Click:Connect(function()
+        styleIdx = styleIdx % #styles + 1
+        Settings.Crosshair.Style = styles[styleIdx]
+        styleLabel.Text = "Style: " .. Settings.Crosshair.Style
+    end)
+
+    addToggle(visTab, "FOV Changer", Settings.FOV.Enabled, function(v) Settings.FOV.Enabled = v end)
+    addSlider(visTab, "FOV Value", 1, 120, Settings.FOV.Value, function(v)
+        Settings.FOV.Value = v
+        if Settings.FOV.Enabled then workspace.CurrentCamera.FieldOfView = v end
+    end)
+    addToggle(visTab, "Fullbright", Settings.Fullbright.Enabled, function(v) Settings.Fullbright.Enabled = v; Fullbright.Toggle(v) end)
+    addToggle(visTab, "No Fog", Settings.NoFog.Enabled, function(v) Settings.NoFog.Enabled = v; NoFog.Toggle(v) end)
+    addToggle(visTab, "ESP", Settings.ESP.Enabled, function(v) Settings.ESP.Enabled = v; ESP.Toggle(v) end)
+    addToggle(visTab, "ESP Players", Settings.ESP.Players, function(v) Settings.ESP.Players = v; if Settings.ESP.Enabled then ESP.Toggle(true) end end)
+    addSlider(visTab, "ESP Distance", 50, 1000, Settings.ESP.Distance, function(v) Settings.ESP.Distance = v end)
+
+    -- Movement tab
+    local movTab = addTab("Movement")
+    addToggle(movTab, "WalkSpeed", Settings.WalkSpeed.Enabled, function(v) Settings.WalkSpeed.Enabled = v; Movement.Update() end)
+    addSlider(movTab, "WalkSpeed Value", 0, 100, Settings.WalkSpeed.Value, function(v) Settings.WalkSpeed.Value = v; Movement.Update() end)
+    addToggle(movTab, "JumpPower", Settings.JumpPower.Enabled, function(v) Settings.JumpPower.Enabled = v; Movement.Update() end)
+    addSlider(movTab, "JumpPower Value", 0, 200, Settings.JumpPower.Value, function(v) Settings.JumpPower.Value = v; Movement.Update() end)
+    addToggle(movTab, "Fly", Settings.Fly.Enabled, function(v) Settings.Fly.Enabled = v; FlyNoclip.ToggleFly(v) end)
+    addSlider(movTab, "Fly Speed", 10, 200, Settings.Fly.Speed, function(v) Settings.Fly.Speed = v end)
+    addToggle(movTab, "Noclip", Settings.Noclip.Enabled, function(v) Settings.Noclip.Enabled = v; FlyNoclip.ToggleNoclip(v) end)
+
+    -- Misc tab
+    local miscTab = addTab("Misc")
+    addToggle(miscTab, "Anti AFK", Settings.AntiAFK.Enabled, function(v) Settings.AntiAFK.Enabled = v; AntiAFK.Toggle(v) end)
+    addToggle(miscTab, "Auto Respawn", Settings.AutoRespawn.Enabled, function(v) Settings.AutoRespawn.Enabled = v; AutoRespawn.Toggle(v) end)
+    addToggle(miscTab, "FPS Booster", Settings.FPSBooster.Enabled, function(v) Settings.FPSBooster.Enabled = v; FPSBooster.Toggle(v) end)
+    addToggle(miscTab, "Infinite Zoom", Settings.InfiniteZoom.Enabled, function(v) Settings.InfiniteZoom.Enabled = v; InfiniteZoom.Toggle(v) end)
+    addToggle(miscTab, "Freecam", Settings.Freecam.Enabled, function(v) Settings.Freecam.Enabled = v; Freecam.Toggle(v) end)
+    addButton(miscTab, "Server Hop", ServerHop)
+    addButton(miscTab, "Rejoin", Rejoin)
+
+    -- Aimbot tab
+    local aimTab = addTab("Aimbot")
+    if GameInfo.Supports.Aimbot then
+        addToggle(aimTab, "Enable Aimbot", Settings.Aimbot.Enabled, function(v) Settings.Aimbot.Enabled = v; Aimbot.Toggle(v) end)
+        addSlider(aimTab, "FOV", 10, 180, Settings.Aimbot.FOV, function(v) Settings.Aimbot.FOV = v end)
+        addSlider(aimTab, "Smoothness", 1, 20, Settings.Aimbot.Smoothness, function(v) Settings.Aimbot.Smoothness = v end)
+        if TouchEnabled then
+            addToggle(aimTab, "Mobile Auto-Aim", Settings.Aimbot.MobileAutoAim, function(v) Settings.Aimbot.MobileAutoAim = v end)
+        end
+    else
+        addLabel(aimTab, "Aimbot not supported in this game")
+    end
+
+    -- Settings tab
+    local setTab = addTab("Settings")
+    addButton(setTab, "Save Config", function() print("Config saved") end)
+    addButton(setTab, "Load Config", function() print("Config loaded") end)
+
+    -- Show first tab
+    if #UI.Tabs > 0 then
+        UI.Tabs[1].Content.Visible = true
+        UI.Tabs[1].Button.BackgroundColor3 = Color3.fromRGB(70,70,80)
+        UI.Tabs[1].Button.TextColor3 = Color3.new(1,1,1)
+        UI.CurrentTab = UI.Tabs[1].Name
+    end
+
+    -- Update canvas size for scroll
+    for _, tab in ipairs(UI.Tabs) do
+        local content = tab.Content
+        content.CanvasSize = UDim2.new(0, 0, 0, #content:GetChildren() * 50 + 20)
+    end
+end
+
+-- ============================================================
 -- DRAGGABLE FLOATING TOGGLE BUTTON (Centered)
 -- ============================================================
 local function createFloatingToggle()
@@ -754,215 +1151,20 @@ local function createFloatingToggle()
     end)
 
     button.MouseButton1Click:Connect(function()
-        if window then
-            if window.Visible then
-                window:Hide()
-            else
-                window:Show()
-            end
+        if UI.ScreenGui then
+            UI.Visible = not UI.Visible
+            UI.ScreenGui.Enabled = UI.Visible
         end
     end)
 end
 
 -- ============================================================
--- CREATE STARLIGHT UI
+-- INITIALIZE UI AND FEATURES
 -- ============================================================
-local window = Starlight:CreateWindow({
-    Title = "Flow Hub | Universal",
-    Theme = Settings.Theme,
-    Keybind = Settings.KeybindOpen,
-})
-
--- Create floating toggle button (centered + draggable)
+createUI()
 createFloatingToggle()
 
--- ============================================================
--- UI TABS & SECTIONS
--- ============================================================
-
--- General Tab
-local generalTab = window:CreateTab("General")
-local infoSection = generalTab:CreateSection("Game Info")
-infoSection:CreateLabel("Detected Game: " .. GameInfo.Type)
-infoSection:CreateLabel("Executor: " .. ExecutorName)
-infoSection:CreateLabel("Supported Features:")
-
-local toggleSection = generalTab:CreateSection("Core Toggles")
-toggleSection:CreateToggle("Enable Script", Settings.Enabled, function(value)
-    Settings.Enabled = value
-end)
-
--- Visuals Tab
-local visualTab = window:CreateTab("Visuals")
-
-local crosshairSection = visualTab:CreateSection("Crosshair")
-crosshairSection:CreateToggle("Enabled", Settings.Crosshair.Enabled, function(value)
-    Settings.Crosshair.Enabled = value
-end)
-crosshairSection:CreateColorPicker("Color", Settings.Crosshair.Color, function(value)
-    Settings.Crosshair.Color = value
-end)
-crosshairSection:CreateSlider("Size", 10, 50, Settings.Crosshair.Size, function(value)
-    Settings.Crosshair.Size = value
-end)
-crosshairSection:CreateDropdown("Style", {"Cross", "Dot", "Circle"}, Settings.Crosshair.Style, function(value)
-    Settings.Crosshair.Style = value
-end)
-
-visualTab:CreateSection("Camera")
-visualTab:CreateToggle("FOV Changer", Settings.FOV.Enabled, function(value)
-    Settings.FOV.Enabled = value
-    if value then workspace.CurrentCamera.FieldOfView = Settings.FOV.Value else workspace.CurrentCamera.FieldOfView = 70 end
-end)
-visualTab:CreateSlider("FOV Value", 1, 120, Settings.FOV.Value, function(value)
-    Settings.FOV.Value = value
-    if Settings.FOV.Enabled then workspace.CurrentCamera.FieldOfView = value end
-end)
-
-visualTab:CreateToggle("Fullbright", Settings.Fullbright.Enabled, function(value)
-    Settings.Fullbright.Enabled = value
-    Fullbright.Toggle(value)
-end)
-
-visualTab:CreateToggle("No Fog", Settings.NoFog.Enabled, function(value)
-    Settings.NoFog.Enabled = value
-    NoFog.Toggle(value)
-end)
-
-local espSection = visualTab:CreateSection("ESP")
-espSection:CreateToggle("Enable ESP", Settings.ESP.Enabled, function(value)
-    Settings.ESP.Enabled = value
-    ESP.Toggle(value)
-end)
-espSection:CreateToggle("Players", Settings.ESP.Players, function(value)
-    Settings.ESP.Players = value
-    if Settings.ESP.Enabled then ESP.Toggle(true) end
-end)
-espSection:CreateToggle("NPCs", Settings.ESP.NPCs, function(value)
-    Settings.ESP.NPCs = value
-end)
-espSection:CreateToggle("Items", Settings.ESP.Items, function(value)
-    Settings.ESP.Items = value
-end)
-espSection:CreateSlider("Distance", 50, 1000, Settings.ESP.Distance, function(value)
-    Settings.ESP.Distance = value
-end)
-
--- Movement Tab
-local movementTab = window:CreateTab("Movement")
-
-movementTab:CreateToggle("WalkSpeed", Settings.WalkSpeed.Enabled, function(value)
-    Settings.WalkSpeed.Enabled = value
-    Movement.Update()
-end)
-movementTab:CreateSlider("WalkSpeed Value", 0, 100, Settings.WalkSpeed.Value, function(value)
-    Settings.WalkSpeed.Value = value
-    Movement.Update()
-end)
-
-movementTab:CreateToggle("JumpPower", Settings.JumpPower.Enabled, function(value)
-    Settings.JumpPower.Enabled = value
-    Movement.Update()
-end)
-movementTab:CreateSlider("JumpPower Value", 0, 200, Settings.JumpPower.Value, function(value)
-    Settings.JumpPower.Value = value
-    Movement.Update()
-end)
-
-movementTab:CreateToggle("Fly", Settings.Fly.Enabled, function(value)
-    Settings.Fly.Enabled = value
-    FlyNoclip.ToggleFly(value)
-end)
-movementTab:CreateSlider("Fly Speed", 10, 200, Settings.Fly.Speed, function(value)
-    Settings.Fly.Speed = value
-end)
-
-movementTab:CreateToggle("Noclip", Settings.Noclip.Enabled, function(value)
-    Settings.Noclip.Enabled = value
-    FlyNoclip.ToggleNoclip(value)
-end)
-
--- Misc Tab
-local miscTab = window:CreateTab("Misc")
-
-miscTab:CreateToggle("Anti AFK", Settings.AntiAFK.Enabled, function(value)
-    Settings.AntiAFK.Enabled = value
-    AntiAFK.Toggle(value)
-end)
-
-miscTab:CreateToggle("Auto Respawn", Settings.AutoRespawn.Enabled, function(value)
-    Settings.AutoRespawn.Enabled = value
-    AutoRespawn.Toggle(value)
-end)
-
-miscTab:CreateToggle("FPS Booster", Settings.FPSBooster.Enabled, function(value)
-    Settings.FPSBooster.Enabled = value
-    FPSBooster.Toggle(value)
-end)
-
-miscTab:CreateToggle("Infinite Zoom", Settings.InfiniteZoom.Enabled, function(value)
-    Settings.InfiniteZoom.Enabled = value
-    InfiniteZoom.Toggle(value)
-end)
-
-miscTab:CreateToggle("Freecam", Settings.Freecam.Enabled, function(value)
-    Settings.Freecam.Enabled = value
-    Freecam.Toggle(value)
-end)
-
-miscTab:CreateButton("Server Hop", ServerHop)
-miscTab:CreateButton("Rejoin", Rejoin)
-
--- Aimbot Tab
-if GameInfo.Supports.Aimbot then
-    local aimbotTab = window:CreateTab("Aimbot")
-    aimbotTab:CreateToggle("Enable Aimbot", Settings.Aimbot.Enabled, function(value)
-        Settings.Aimbot.Enabled = value
-        Aimbot.Toggle(value)
-    end)
-    aimbotTab:CreateSlider("FOV", 10, 180, Settings.Aimbot.FOV, function(value)
-        Settings.Aimbot.FOV = value
-    end)
-    aimbotTab:CreateSlider("Smoothness", 1, 20, Settings.Aimbot.Smoothness, function(value)
-        Settings.Aimbot.Smoothness = value
-    end)
-    aimbotTab:CreateKeybind("Aim Key (PC)", Settings.Aimbot.Keybind, function(key)
-        Settings.Aimbot.Keybind = key
-    end)
-    if TouchEnabled then
-        aimbotTab:CreateToggle("Mobile Auto-Aim", Settings.Aimbot.MobileAutoAim, function(value)
-            Settings.Aimbot.MobileAutoAim = value
-        end)
-    end
-else
-    local aimbotTab = window:CreateTab("Aimbot")
-    aimbotTab:CreateLabel("Aimbot not supported in this game")
-end
-
--- Settings Tab
-local settingsTab = window:CreateTab("Settings")
-
-settingsTab:CreateKeybind("Open GUI Key (PC)", Settings.KeybindOpen, function(key)
-    Settings.KeybindOpen = key
-    window:SetKeybind(key)
-end)
-
-settingsTab:CreateDropdown("Theme", {"Dark", "Light", "Blue", "Red"}, Settings.Theme, function(value)
-    Settings.Theme = value
-    window:SetTheme(value)
-end)
-
-settingsTab:CreateButton("Save Config", function()
-    print("Config saved")
-end)
-
-settingsTab:CreateButton("Load Config", function()
-    print("Config loaded")
-end)
-
--- ============================================================
--- APPLY INITIAL SETTINGS
--- ============================================================
+-- Apply initial settings
 if Settings.Fullbright.Enabled then Fullbright.Toggle(true) end
 if Settings.NoFog.Enabled then NoFog.Toggle(true) end
 if Settings.AntiAFK.Enabled then AntiAFK.Toggle(true) end
@@ -974,12 +1176,10 @@ if Settings.ESP.Enabled then ESP.Toggle(true) end
 if Settings.WalkSpeed.Enabled or Settings.JumpPower.Enabled then Movement.Update() end
 if Settings.Aimbot.Enabled and GameInfo.Supports.Aimbot then Aimbot.Toggle(true) end
 
--- ============================================================
--- STARTUP MESSAGES
--- ============================================================
-print("Flow Hub | Universal loaded.")
+-- Startup messages
+print("Flow Hub | Universal loaded successfully.")
 print("Detected game: " .. GameInfo.Type)
 print("Executor: " .. ExecutorName)
 if TouchEnabled then
-    print("Mobile mode active. Drag the floating button to move it.")
+    print("Mobile mode active – drag the floating button to move it.")
 end
