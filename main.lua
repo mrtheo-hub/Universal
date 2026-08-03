@@ -76,8 +76,8 @@ local Settings = {
     Spectate = { Enabled = false, Target = nil },
     Teleport = { Enabled = false, Target = nil },
 
-    -- Aimbot
-    Aimbot = { Enabled = false, FOV = 90, Smoothness = 5, Keybind = Enum.KeyCode.RightButton, MobileAutoAim = false },
+    -- Aimbot (default key is R, not RightButton)
+    Aimbot = { Enabled = false, FOV = 90, Smoothness = 5, Keybind = Enum.KeyCode.R, MobileAutoAim = false },
 
     -- Theme
     Theme = "Dark",
@@ -150,7 +150,7 @@ local UserInputService = game:GetService("UserInputService")
 local TouchEnabled = UserInputService.TouchEnabled
 
 -- ============================================================
--- FEATURE MODULES
+-- FEATURE MODULES (full implementation)
 -- ============================================================
 
 -- FPS Booster
